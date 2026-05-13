@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@1,700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Playfair Display", serif;
+  --color-gold: #D4AF37;
+  --color-gold-light: #F9E27D;
+  --color-gold-dark: #A67C00;
+  --color-black-pure: #000000;
+  --color-black-soft: #121212;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-black-pure text-white font-sans;
+  }
+}
+
+@layer components {
+  .gold-gradient {
+    background: linear-gradient(45deg, #A67C00, #D4AF37, #F9E27D, #D4AF37, #A67C00);
+    background-size: 200% 200%;
+    animation: gold-shine 3s linear infinite;
+  }
+
+  .vip-shine {
+    @apply relative overflow-hidden;
+  }
+
+  .vip-shine::after {
+    content: "";
+    @apply absolute inset-0 pointer-events-none;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: shine 2s infinite;
+  }
+}
+
+@keyframes gold-shine {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.bubble-animation {
+  animation: bubble 4s ease-in infinite;
+}
+
+@keyframes bubble {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+}
+
+.golden-emoji {
+  display: inline-block;
+  filter: sepia(1) saturate(10) hue-rotate(-10deg) drop-shadow(0 0 8px rgba(212, 175, 55, 0.8));
+  animation: emoji-float 2s ease-in-out infinite;
+}
+
+.diamond-purple-pink {
+  background: linear-gradient(45deg, #ff00ff, #7000ff, #ff00ff);
+  background-size: 200% 200%;
+  animation: movable-gradient 3s ease infinite;
+}
+
+.diamond-black-white {
+  background: linear-gradient(45deg, #000000, #ffffff, #000000);
+  background-size: 200% 200%;
+  animation: movable-gradient 3s ease infinite;
+}
+
+@keyframes movable-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.flying-owl {
+  @apply absolute pointer-events-none;
+  animation: fly-owl 10s linear infinite;
+}
+
+@keyframes fly-owl {
+  0% { transform: translate(-50px, 100vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translate(110vw, -100px) rotate(360deg); opacity: 0; }
+}
+
+@keyframes emoji-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-10px) scale(1.2); }
+}

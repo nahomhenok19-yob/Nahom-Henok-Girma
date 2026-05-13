@@ -1,0 +1,11 @@
+{
+  "name": "melkahayu.nahom",
+  "description": "A luxury, VIP-only social experience for sharing moods and connecting with premium members.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation",
+    "gyroscope",
+    "accelerometer"
+  ]
+}

@@ -1,0 +1,251 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and status",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "email": { "type": "string" },
+        "coins": { "type": "number" },
+        "isVip": { "type": "boolean" },
+        "vipExpiry": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" }
+      },
+      "required": ["displayName", "email"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Social media post",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["video", "image", "text"] },
+        "likes": { "type": "number" },
+        "commentsCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "aiComment": { "type": "string" },
+        "aiMusicSuggestion": { "type": "string" }
+      },
+      "required": ["authorId", "content", "type"]
+    },
+    "VipRequest": {
+      "title": "VipRequest",
+      "description": "Request for VIP status",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "plan": { "type": "string", "enum": ["weekly", "monthly", "yearly"] },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "transactionId", "plan", "status"]
+    },
+    "UserGift": {
+      "title": "UserGift",
+      "description": "Gift sent from one user to another",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "giftId": { "type": "string" },
+        "giftName": { "type": "string" },
+        "price": { "type": "number" },
+        "commission": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "receiverId", "giftId", "price"]
+    },
+    "GiftCatalog": {
+      "title": "GiftCatalog",
+      "description": "Available gifts in the shop",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "icon": { "type": "string" }
+      },
+      "required": ["name", "price", "icon"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "Post like record",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "userId"]
+    },
+    "Land": {
+      "title": "Land",
+      "description": "Digital Land (Education, Equb, Edir)",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["education", "equb", "edir", "ministry"] },
+        "ownerId": { "type": "string" },
+        "members": { "type": "array" },
+        "equbAmount": { "type": "number" },
+        "equbCycle": { "type": "string" },
+        "currentWinnerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "LandMessage": {
+      "title": "LandMessage",
+      "description": "Message in a land",
+      "type": "object",
+      "properties": {
+        "landId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MoodPost": {
+      "title": "MoodPost",
+      "description": "Anonymous mood post",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "mood": { "type": "string" },
+        "text": { "type": "string" },
+        "reactions": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isAnonymous": { "type": "boolean" }
+      }
+    },
+    "MoodMatch": {
+      "title": "MoodMatch",
+      "description": "AI Mood Match",
+      "type": "object",
+      "properties": {
+        "users": { "type": "array", "items": { "type": "string" } },
+        "mood": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" }
+      }
+    },
+    "Follow": {
+      "title": "Follow",
+      "description": "User follow relationship",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string" },
+        "followingId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["followerId", "followingId"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderPhoto": { "type": "string" },
+        "type": { "type": "string", "enum": ["like", "comment", "follow", "gift", "mention", "system"] },
+        "postId": { "type": "string" },
+        "text": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "senderId", "type", "text", "isRead"]
+    },
+    "Broadcast": {
+      "title": "Broadcast",
+      "description": "Global announcement from admin",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "type": { "type": "string" },
+        "isNew": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "senderId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/broadcasts/{broadcastId}": {
+      "schema": "Broadcast",
+      "description": "Global broadcast announcements"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Social media posts"
+    },
+    "/vip_requests/{requestId}": {
+      "schema": "VipRequest",
+      "description": "VIP payment requests"
+    },
+    "/user_gifts/{giftId}": {
+      "schema": "UserGift",
+      "description": "Sent gifts"
+    },
+    "/gift_catalog/{giftId}": {
+      "schema": "GiftCatalog",
+      "description": "Gift shop items"
+    },
+    "/likes/{likeId}": {
+      "schema": "Like",
+      "description": "Post likes"
+    },
+    "/follows/{followId}": {
+      "schema": "Follow",
+      "description": "User follows"
+    },
+    "/lands/{landId}": {
+      "schema": "Land",
+      "description": "Digital Lands"
+    },
+    "/land_messages/{messageId}": {
+      "schema": "LandMessage",
+      "description": "Land chat messages"
+    },
+    "/mood_posts/{postId}": {
+      "schema": "MoodPost",
+      "description": "Anonymous mood posts"
+    },
+    "/mood_matches/{matchId}": {
+      "schema": "MoodMatch",
+      "description": "AI Mood matches"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "/groups/{groupId}": {
+      "schema": "object",
+      "description": "Chat groups"
+    },
+    "/channels/{channelId}": {
+      "schema": "object",
+      "description": "Chat channels"
+    },
+    "/chat_messages/{messageId}": {
+      "schema": "object",
+      "description": "Chat messages"
+    },
+    "/comments/{commentId}": {
+      "schema": "object",
+      "description": "Post comments"
+    }
+  }
+}

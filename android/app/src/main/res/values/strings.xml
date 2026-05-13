@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Melkahayu</string>
+    <string name="title_activity_main">Melkahayu</string>
+    <string name="package_name">com.melkahayu.app</string>
+    <string name="custom_url_scheme">com.melkahayu.app</string>
+</resources>

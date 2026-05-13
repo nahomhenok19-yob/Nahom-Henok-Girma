@@ -1,0 +1,211 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Default Deny Catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Safer getUserData that won't crash if doc doesn't exist
+    function getUserData() {
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : {};
+    }
+
+    function isEmailAdmin() {
+      return isSignedIn() && request.auth.token.email in ["yewubdarhaileyesus8@gmail.com", "nahomhenok19@gmail.com", "henokgirma878@gmail.com"];
+    }
+
+    function isAdmin() {
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isEmailAdmin() || 
+         (isSignedIn() && request.auth.token.email_verified == true && exists(path) && get(path).data.get('role', 'user') in ['admin', 'owner']);
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+    function isValidUser(data) {
+      return data.displayName is string && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() <= 100;
+    }
+
+    function isValidPost(data) {
+      return data.authorId == request.auth.uid &&
+             data.type in ['video', 'image', 'text', 'audio'] &&
+             data.content is string && data.content.size() <= 5000;
+    }
+
+    // --- Match Blocks ---
+
+    // Users
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) && (
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'displayName', 'photoURL', 'bio', 'lastLogin', 'fcmToken', 
+                           'theme', 'mood', 'phoneNumber', 'hidePhoneNumber', 
+                           'diamondTheme', 'hasBot', 'lastBroadcastSeen', 'coins',
+                           'followersCount', 'followingCount', 'isVip', 'vipExpiry',
+                           'isDiamond', 'diamondExpiry', 'isVipAllYear', 'role'
+                         ])
+                       )) || isAdmin();
+    }
+
+    // Posts
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidPost(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        (isOwner(existing().authorId) && incoming().authorId == existing().authorId) ||
+        // Allow social updates (likes, views, etc)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes', 'views', 'seenBy'])) ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (isOwner(existing().authorId) || isAdmin());
+    }
+
+    // Comments
+    match /comments/{commentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && incoming().createdAt == request.time;
+      allow delete: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+    }
+
+    // Likes
+    match /likes/{likeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && incoming().createdAt == request.time;
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+
+    // Follows
+    match /follows/{followerId_followingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().followerId == request.auth.uid && incoming().createdAt == request.time;
+      allow delete: if isSignedIn() && isOwner(existing().followerId);
+    }
+
+    // Lands
+    match /lands/{landId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        isOwner(existing().ownerId) || 
+        isAdmin() ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['members', 'currentWinnerId']))
+      );
+    }
+
+    // Land Messages
+    match /land_messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().senderId == request.auth.uid && incoming().createdAt == request.time;
+      allow delete: if isSignedIn() && (isOwner(existing().senderId) || isAdmin());
+    }
+
+    // Land Join Requests
+    match /land_join_requests/{requestId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isAdmin();
+    }
+
+    // Mood Posts
+    match /mood_posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (incoming().userId == request.auth.uid || incoming().isAnonymous == true);
+      allow update: if isSignedIn(); // Reactions
+      allow delete: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+    }
+
+    // Mood Matches
+    match /mood_matches/{matchId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.users;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid in resource.data.users;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && isOwner(resource.data.userId);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && isOwner(resource.data.userId) && incoming().diff(existing()).affectedKeys().hasOnly(['isRead']);
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+
+    // VIP Requests
+    match /vip_requests/{requestId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isEmailAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isAdmin();
+    }
+
+    // Luxury Assets & Auctions
+    match /luxury_assets/{assetId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /auctions/{auctionId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Ads for VIP users
+    match /ads/{adId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Gifts
+    match /user_gifts/{giftId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().senderId == request.auth.uid;
+    }
+
+    match /gift_catalog/{giftId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Chat
+    match /groups/{groupId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    match /channels/{channelId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /chat_messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().senderId == request.auth.uid;
+    }
+
+    // Broadcasts
+    match /broadcasts/{broadcastId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

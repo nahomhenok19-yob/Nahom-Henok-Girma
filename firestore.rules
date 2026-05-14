@@ -51,7 +51,31 @@ service cloud.firestore {
              data.content is string && data.content.size() <= 5000;
     }
 
+    function isValidInnovationProposal(data) {
+      return data.userId == request.auth.uid &&
+             data.title is string && data.title.size() <= 200 &&
+             data.problem is string && data.problem.size() <= 5000 &&
+             data.status in ['draft', 'submitted', 'reviewed'];
+    }
+
     // --- Match Blocks ---
+
+    // Innovation Proposals
+    match /innovation_proposals/{proposalId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidInnovationProposal(incoming()) && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && (
+        (isOwner(existing().userId) && isValidInnovationProposal(incoming()) && 
+         incoming().diff(existing()).affectedKeys().hasOnly([
+           'title', 'executiveSummary', 'projectOverview', 'problem', 'objectives', 
+           'scopeOfWork', 'description', 'materials', 'technologies', 'methodology', 
+           'deliverables', 'benefits', 'budget', 'timeline', 'conclusion', 'contactInfo', 'status'
+         ])) || 
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
 
     // Users
     match /users/{userId} {

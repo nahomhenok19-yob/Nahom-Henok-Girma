@@ -11,7 +11,21 @@
         "coins": { "type": "number" },
         "isVip": { "type": "boolean" },
         "vipExpiry": { "type": "string", "format": "date-time" },
-        "lastLogin": { "type": "string", "format": "date-time" }
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "model": { "type": "string" },
+              "lastUsed": { "type": "string", "format": "date-time" },
+              "isCurrent": { "type": "boolean" }
+            }
+          }
+        }
       },
       "required": ["displayName", "email"]
     },
@@ -176,9 +190,42 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["text", "senderId", "createdAt"]
+    },
+    "InnovationProposal": {
+      "title": "InnovationProposal",
+      "description": "Software development proposal",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "title": { "type": "string" },
+        "executiveSummary": { "type": "string" },
+        "projectOverview": { "type": "string" },
+        "problem": { "type": "string" },
+        "objectives": { "type": "object" },
+        "scopeOfWork": { "type": "array" },
+        "description": { "type": "string" },
+        "materials": { "type": "array" },
+        "technologies": { "type": "array" },
+        "methodology": { "type": "array" },
+        "deliverables": { "type": "array" },
+        "benefits": { "type": "object" },
+        "budget": { "type": "array" },
+        "timeline": { "type": "array" },
+        "conclusion": { "type": "string" },
+        "contactInfo": { "type": "object" },
+        "status": { "type": "string", "enum": ["draft", "submitted", "reviewed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "problem", "status", "createdAt"]
     }
   },
   "firestore": {
+    "/innovation_proposals/{proposalId}": {
+      "schema": "InnovationProposal",
+      "description": "Innovation proposals submitted by users"
+    },
     "/broadcasts/{broadcastId}": {
       "schema": "Broadcast",
       "description": "Global broadcast announcements"

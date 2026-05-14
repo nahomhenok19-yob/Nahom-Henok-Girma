@@ -23,6 +23,16 @@ export interface UserProfile {
   totalGiftsReceived?: number;
   isVipAllYear?: boolean;
   lastBroadcastSeen?: number;
+  devices?: Device[];
+}
+
+export interface Device {
+  id: string;
+  name: string;
+  type: string;
+  model: string;
+  lastUsed: Timestamp;
+  isCurrent?: boolean;
 }
 
 export interface Land {

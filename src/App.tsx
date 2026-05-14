@@ -14,7 +14,9 @@ import {
   browserLocalPersistence,
   RecaptchaVerifier,
   signInWithPhoneNumber,
-  ConfirmationResult
+  ConfirmationResult,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { 
   doc, 
@@ -55,6 +57,8 @@ import {
   Video,
   Phone,
   Camera,
+  ArrowLeft,
+  ArrowRight,
   Flashlight,
   RotateCcw,
   CameraOff,
@@ -65,7 +69,6 @@ import {
   Zap,
   Sparkles,
   Gem,
-  ArrowLeft,
   BookOpen,
   Edit3,
   ShieldCheck,
@@ -94,10 +97,14 @@ import {
   ListChecks,
   Target,
   RefreshCw,
-  Power
+  Power,
+  Smartphone,
+  Laptop,
+  Tablet,
+  Cpu
 } from 'lucide-react';
 import { cn } from './lib/utils';
-import { UserProfile, Post, VipRequest, Land, LandMessage, ChatGroup, Channel, ChatMessage, Comment, MoodType, MoodPost, MoodMatch, Gift, UserGift, Like, Notification, LandJoinRequest, LuxuryAsset, Auction, Ad, InnovationProposal } from './types';
+import { UserProfile, Device, Post, VipRequest, Land, LandMessage, ChatGroup, Channel, ChatMessage, Comment, MoodType, MoodPost, MoodMatch, Gift, UserGift, Like, Notification, LandJoinRequest, LuxuryAsset, Auction, Ad, InnovationProposal } from './types';
 import { generateAiComment, moderateContent } from './services/aiService';
 import InnovationProposalForm from './components/InnovationProposalForm';
 import ProposalDetail from './components/ProposalDetail';
@@ -289,6 +296,8 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const p = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InnovationProposal));
       setProposals(p);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'innovation_proposals');
     });
     return () => unsubscribe();
   }, [user]);
@@ -1096,17 +1105,27 @@ export default function App() {
             lastLogin: serverTimestamp() as any,
             followersCount: 0,
             followingCount: 0,
+            devices: [{
+              id: 'initial',
+              name: 'Original Access Device',
+              type: 'system',
+              model: navigator.platform,
+              lastUsed: Timestamp.now(),
+              isCurrent: true
+            }],
             role: ['yewubdarhaileyesus8@gmail.com', 'nahomhenok19@gmail.com', 'henokgirma878@gmail.com'].includes(u.email || '') ? 'owner' : 'user'
           };
           await setDoc(doc(db, 'users', u.uid), newProfile);
           setProfile(newProfile);
-          setMustChooseMembership(true);
+          // NEW users can also enter freely
+          // setMustChooseMembership(true);
         } else {
           const data = userDoc.data() as UserProfile;
           setProfile(data);
-          if (!data.isVip && !data.isDiamond) {
-            setMustChooseMembership(true);
-          }
+          // Allow normal users to enter without mandatory VIP selection
+          // if (!data.isVip && !data.isDiamond) {
+          //   setMustChooseMembership(true);
+          // }
           if (data.role === 'owner') {
             seedGifts();
           }
@@ -1643,6 +1662,34 @@ export default function App() {
       hasBot: editHasBot
     });
     setIsEditingProfile(false);
+    addToast("Success", "Profile updated ✨", "success");
+  };
+
+  const handleAddDevice = async () => {
+    if (!user || !profile) return;
+    
+    // Simulate detecting a new device
+    const userAgent = navigator.userAgent;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
+    const platform = navigator.platform;
+    
+    const newDevice: Device = {
+      id: Math.random().toString(36).substring(7),
+      name: isMobile ? `Mobile Device (${platform})` : `Desktop System (${platform})`,
+      type: isMobile ? 'mobile' : 'desktop',
+      model: platform,
+      lastUsed: Timestamp.now(),
+      isCurrent: false
+    };
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        devices: arrayUnion(newDevice)
+      });
+      addToast("Device Linked", "New biometric device has been linked to your account.", "success");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
+    }
   };
 
   const projectorStreamRef = useRef<MediaStream | null>(null);
@@ -2044,6 +2091,8 @@ const isEmojiOnly = (text: string) => {
     addToast("Shared", `Shared with ${selectedFollowers.length} followers!`, "success");
   };
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showRoyalWelcome, setShowRoyalWelcome] = useState(false);
+  const [showDevicesManager, setShowDevicesManager] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -2071,9 +2120,48 @@ const isEmojiOnly = (text: string) => {
       addToast("OTP Sent", "Verification code sent to your phone.", "success");
     } catch (error: any) {
       console.error("Login Error:", error);
-      toast.error(`Login failed: ${error.message || 'Unknown error'}`);
+      if (error.code === 'auth/operation-not-allowed') {
+        toast.error("Phone sign-in is not enabled. Please use Google Login or contact the administrator.");
+      } else {
+        toast.error(`Login failed: ${error.message || 'Unknown error'}`);
+      }
     } finally {
       loginInProgress.current = false;
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      // Force user to re-authenticate (ask for password)
+      provider.setCustomParameters({ prompt: 'login' });
+      await setPersistence(auth, browserLocalPersistence);
+      await signInWithPopup(auth, provider);
+      
+      // Trigger Royal Welcome
+      setShowRoyalWelcome(true);
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#D4AF37', '#FFD700', '#FFFFFF']
+      });
+
+      // Auto-hide royal welcome after 4 seconds
+      setTimeout(() => setShowRoyalWelcome(false), 4000);
+
+      addToast("Royal Access Granted", "Welcome to Nahom's Royal Kingdom! 👑", "success");
+    } catch (error: any) {
+      console.error("Google Sign-In Error:", error);
+      if (error.code === 'auth/operation-not-allowed') {
+        toast.error("Google sign-in is not enabled in Firebase Console.");
+      } else {
+        toast.error(`Google sign-in failed: ${error.message || 'Unknown error'}`);
+      }
+    } finally {
       setIsLoggingIn(false);
     }
   };
@@ -2084,7 +2172,20 @@ const isEmojiOnly = (text: string) => {
     setIsLoggingIn(true);
     try {
       await confirmationResult.confirm(verificationCode);
-      addToast("Success", "Authenticated successfully!", "success");
+      
+      // Trigger Royal Welcome
+      setShowRoyalWelcome(true);
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#D4AF37', '#FFD700', '#FFFFFF']
+      });
+
+      // Auto-hide royal welcome after 4 seconds
+      setTimeout(() => setShowRoyalWelcome(false), 4000);
+
+      addToast("Royal Access Granted", "Welcome to Nahom's Royal Kingdom! 👑", "success");
     } catch (error: any) {
       console.error("Verification Error:", error);
       toast.error(`Verification failed: ${error.message || 'Invalid code'}`);
@@ -2559,23 +2660,42 @@ const isEmojiOnly = (text: string) => {
                   className="w-full bg-white/5 border border-gold/20 rounded-2xl py-4 pl-12 pr-4 text-gold placeholder:text-gold/20 focus:outline-none focus:border-gold/50 transition-all"
                 />
               </div>
-              <button 
-                onClick={handleLogin}
-                disabled={isLoggingIn || !phoneNumber}
-                className={cn(
-                  "w-full py-4 bg-gold text-black font-bold rounded-full hover:bg-gold-light transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(212,175,55,0.3)] flex items-center justify-center gap-3",
-                  (isLoggingIn || !phoneNumber) && "opacity-70 cursor-not-allowed scale-100 shadow-none"
-                )}
-              >
-                {isLoggingIn ? (
-                  <>
-                    <RefreshCw className="w-5 h-5 animate-spin" />
-                    Sending Code...
-                  </>
-                ) : (
-                  "Send Verification Code"
-                )}
-              </button>
+              <div className="flex gap-3">
+                <button 
+                  onClick={handleLogin}
+                  disabled={isLoggingIn || !phoneNumber}
+                  className={cn(
+                    "flex-1 py-4 bg-gold text-black font-bold rounded-full hover:bg-gold-light transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(212,175,55,0.3)] flex items-center justify-center gap-2",
+                    (isLoggingIn || !phoneNumber) && "opacity-70 cursor-not-allowed scale-100 shadow-none"
+                  )}
+                >
+                  {isLoggingIn && !confirmationResult ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Phone Login"
+                  )}
+                </button>
+                <button 
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoggingIn}
+                  className={cn(
+                    "flex-1 py-4 bg-white/10 text-white border border-white/20 font-bold rounded-full hover:bg-white/20 transition-all transform hover:scale-105 flex items-center justify-center gap-2",
+                    isLoggingIn && "opacity-70 cursor-not-allowed scale-100 shadow-none"
+                  )}
+                >
+                  <Globe className="w-4 h-4 text-gold" />
+                  Google Login
+                </button>
+              </div>
+              <div className="text-center">
+                <p className="text-[8px] text-gray-500 uppercase tracking-widest leading-relaxed">
+                  By connecting, you agree to our <br />
+                  <span className="text-gold/60 cursor-pointer">Terms of Service</span> & <span className="text-gold/60 cursor-pointer">Privacy Policy</span>
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -3202,20 +3322,13 @@ const isEmojiOnly = (text: string) => {
                       {homeSubTab === 'videos' && <motion.div layoutId="activeSubTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-gold rounded-full shadow-[0_0_10px_rgba(255,215,0,0.5)]" />}
                     </button>
                     <button 
-                      onClick={() => {
-                        if (profile?.isVip || profile?.role === 'owner') {
-                          setHomeSubTab('offline');
-                        } else {
-                          addToast("VIP Feature", "🌟 Offline Videos are a VIP Feature! Upgrade to watch 250+ videos without data.", "info");
-                          setShowVipModal(true);
-                        }
-                      }}
+                      onClick={() => setHomeSubTab('offline')}
                       className={cn(
                         "text-sm font-bold uppercase tracking-widest transition-all relative flex items-center gap-1 py-2",
                         homeSubTab === 'offline' ? "text-gold scale-110" : "text-white/40 hover:text-white/80"
                       )}
                     >
-                      Offline {!isElite && <Lock className="w-3 h-3" />}
+                      Offline {!isElite && <Crown className="w-3 h-3 text-gold/60" />}
                       {homeSubTab === 'offline' && <motion.div layoutId="activeSubTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-gold rounded-full shadow-[0_0_10px_rgba(255,215,0,0.5)]" />}
                     </button>
                   </div>
@@ -3245,7 +3358,7 @@ const isEmojiOnly = (text: string) => {
                 } else if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
                   // Swipe Left -> Move Content Left -> Show Tab to the RIGHT
                   if (homeSubTab === 'moods') setHomeSubTab('videos');
-                  else if (homeSubTab === 'videos' && (profile?.isVip || profile?.role === 'owner')) setHomeSubTab('offline');
+                  else if (homeSubTab === 'videos') setHomeSubTab('offline');
                 }
               }}
             >
@@ -3505,7 +3618,8 @@ const isEmojiOnly = (text: string) => {
 
         {activeTab === 'add' && (
           <div className="p-6 max-w-lg mx-auto h-full overflow-y-auto pb-24">
-            {!isElite ? (
+            {/* Allow normal users to participate in elite content creation */}
+            {false ? (
               <div className="bg-black-soft border border-gold/30 rounded-3xl p-8 flex-1 flex flex-col items-center justify-center text-center">
                 <PlusSquare className="w-20 h-20 text-gold mb-6 opacity-30" />
                 <h2 className="text-2xl font-bold text-gold mb-4">Elite Content Creation</h2>
@@ -4829,6 +4943,25 @@ const isEmojiOnly = (text: string) => {
 
               {profile?.bio && <p className="text-gray-300 text-sm max-w-xs mx-auto mb-4 italic">"{profile.bio}"</p>}
 
+              {(!profile?.isVip && !profile?.isDiamond && (!viewingUserId || viewingUserId === user?.uid)) && (
+                <div className="mb-8 p-6 bg-gold/5 border border-gold/20 rounded-[2.5rem] relative overflow-hidden group max-w-xs mx-auto">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gold/10 blur-[50px] rounded-full -translate-y-1/2 translate-x-1/2" />
+                  <div className="flex justify-center mb-4">
+                    <div className="p-3 bg-gold/10 rounded-full">
+                      <Crown className="w-8 h-8 text-gold" />
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold mb-1 italic font-serif">Join the Elite</h3>
+                  <p className="text-gray-400 text-[10px] uppercase tracking-widest mb-4">Unlock VIP & Diamond status today</p>
+                  <button 
+                    onClick={() => setShowVipSelection(true)}
+                    className="w-full py-3 bg-gold text-black font-bold rounded-xl hover:bg-gold-light transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(212,175,55,0.2)]"
+                  >
+                    Send VIP Request <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               {/* Membership Status & Countdown */}
               {(profile?.isVip || profile?.isDiamond) && (
                 <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-3xl flex items-center justify-between max-w-xs mx-auto">
@@ -5105,12 +5238,30 @@ const isEmojiOnly = (text: string) => {
               </div>
             </div>
 
-            <button 
-              onClick={() => auth.signOut()}
-              className="w-full py-3 border border-red-500/30 text-red-500 rounded-xl hover:bg-red-500/10 transition-all"
-            >
-              Sign Out
-            </button>
+            <div className="space-y-3 mb-8">
+              <button 
+                onClick={() => setShowDevicesManager(true)}
+                className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold flex items-center justify-between px-6 hover:bg-white/10 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gold/10 rounded-xl group-hover:scale-110 transition-transform">
+                    <Smartphone className="w-5 h-5 text-gold" />
+                  </div>
+                  <span className="text-sm">Linked Devices</span>
+                </div>
+                <div className="flex items-center gap-2">
+                   <span className="text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-black">{profile?.devices?.length || 0}</span>
+                   <ChevronRight className="w-5 h-5 text-gray-600" />
+                </div>
+              </button>
+
+              <button 
+                onClick={() => auth.signOut()}
+                className="w-full py-4 border border-red-500/30 text-red-500 rounded-2xl hover:bg-red-500/10 transition-all font-bold"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         )}
 
@@ -6033,6 +6184,143 @@ const isEmojiOnly = (text: string) => {
             proposal={selectedProposal}
             onClose={() => setSelectedProposal(null)}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showRoyalWelcome && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-xl overflow-hidden"
+          >
+            {/* Visual background accents */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-gold/10 blur-[120px]" />
+              <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-gold/10 blur-[120px]" />
+            </div>
+
+            <motion.div 
+              initial={{ scale: 0.8, y: 50, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 1.1, opacity: 0 }}
+              className="relative text-center px-6"
+            >
+              <motion.div 
+                animate={{ 
+                  y: [0, -10, 0],
+                  rotate: [0, 5, -5, 0]
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="mb-8 flex justify-center"
+              >
+                <div className="w-24 h-24 rounded-full bg-gold/20 flex items-center justify-center border border-gold/40 shadow-[0_0_50px_rgba(212,175,55,0.3)]">
+                  <Crown className="w-12 h-12 text-gold" />
+                </div>
+              </motion.div>
+
+              <motion.h1 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-4xl md:text-7xl font-bold italic font-serif text-white mb-4 tracking-tight"
+              >
+                Welcome to <br />
+                <span className="text-gold royal-text-shadow">Nahom's Royal Kingdom</span>
+              </motion.h1>
+
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ delay: 0.5, duration: 1 }}
+                className="h-[1px] bg-gradient-to-r from-transparent via-gold/50 to-transparent mb-6 mx-auto max-w-sm"
+              />
+
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="text-gold/60 uppercase tracking-[0.5em] text-[10px] font-bold"
+              >
+                Access Granted • Premium Experience
+              </motion.p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Device Manager Modal */}
+      <AnimatePresence>
+        {showDevicesManager && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 50 }}
+              className="bg-black-soft border border-gold/20 rounded-[3rem] w-full max-w-sm overflow-hidden flex flex-col"
+            >
+              <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                <h3 className="text-xl font-bold italic font-serif text-gold">Linked Devices</h3>
+                <button onClick={() => setShowDevicesManager(false)} className="p-2 hover:bg-white/5 rounded-full">
+                   <Plus className="w-6 h-6 rotate-45 text-gray-500" />
+                </button>
+              </div>
+              <div className="p-6 max-h-[50vh] overflow-y-auto space-y-4 no-scrollbar">
+                {profile?.devices?.map(dev => (
+                  <div key={dev.id} className="p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between group hover:border-gold/30 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gold/10 rounded-xl">
+                        {dev.type === 'mobile' ? <Smartphone className="w-5 h-5 text-gold" /> : <Laptop className="w-5 h-5 text-gold" />}
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold">{dev.name}</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">{dev.model}</p>
+                      </div>
+                    </div>
+                    {dev.isCurrent ? (
+                      <div className="text-[8px] bg-gold text-black font-black px-2 py-1 rounded-full">CURRENT</div>
+                    ) : (
+                      <button 
+                        onClick={async () => {
+                          if (!user) return;
+                          const filtered = profile.devices?.filter(d => d.id !== dev.id);
+                          await updateDoc(doc(db, 'users', user.uid), { devices: filtered });
+                          addToast("Terminated", "Device access has been revoked.", "success");
+                        }}
+                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                         <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                
+                {(!profile?.devices || profile.devices.length === 0) && (
+                  <div className="text-center py-12 text-gray-600">
+                    <Database className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                    <p className="italic">No linked hardware found.</p>
+                  </div>
+                )}
+              </div>
+              <div className="p-6 border-t border-white/5 mt-auto bg-black-soft/50 backdrop-blur-md">
+                <button 
+                  onClick={handleAddDevice}
+                  className="w-full py-4 bg-gold text-black font-bold rounded-2xl hover:bg-gold-light transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.2)]"
+                >
+                  <Plus className="w-5 h-5" /> Add Another Device
+                </button>
+                <p className="text-center text-[8px] text-gray-500 mt-4 uppercase tracking-[0.3em] font-black leading-relaxed">
+                  Secure Biometric Sync • 256-bit Encryption
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

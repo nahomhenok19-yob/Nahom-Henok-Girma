@@ -26,11 +26,11 @@ interface Props {
 
 export default function InnovationProposalForm({ onClose, onSubmit }: Props) {
   const [step, setStep] = useState(1);
-  const [title, setTitle] = useState('');
-  const [executiveSummary, setExecutiveSummary] = useState('');
-  const [projectOverview, setProjectOverview] = useState('');
-  const [problem, setProblem] = useState('');
-  const [mainObjective, setMainObjective] = useState('');
+  const [title, setTitle] = useState('AI Ethiopia - Digital Social & Innovation Platform');
+  const [executiveSummary, setExecutiveSummary] = useState('Building a unified digital ecosystem for Ethiopians to connect, collaborate, and innovate using modern technologies.');
+  const [projectOverview, setProjectOverview] = useState('AI Ethiopia is a full-stack social platform featuring digital lands, VIP memberships, and innovation tracking.');
+  const [problem, setProblem] = useState('Lack of a centralized, secure, and culturally tailored social networking platform for the Ethiopian diaspora and local tech innovators.');
+  const [mainObjective, setMainObjective] = useState('ዘመናዊ፣ አስተማማኝ እና ተደራሽ የሆነ የኢትዮጵያውያን ማህበራዊ ትስስር እና የፈጠራ ስራዎች መድረክ በማልማት ተጠቃሚዎችን ማገናኘት።');
   const [specificObjectives, setSpecificObjectives] = useState<string[]>(['']);
   const [scopeOfWork, setScopeOfWork] = useState<{ phase: string; duration: string; details: string[] }[]>([
     { phase: 'Requirement Analysis', duration: '1 Week', details: ['Gather client requirements', 'Identify business goals'] }
@@ -159,7 +159,7 @@ export default function InnovationProposalForm({ onClose, onSubmit }: Props) {
                 <input 
                   value={mainObjective}
                   onChange={(e) => setMainObjective(e.target.value)}
-                  placeholder="Main Objective"
+                  placeholder="ዋና ዓላማ (Main Objective)"
                   className="w-full bg-white/5 border border-gold/20 rounded-xl p-3 focus:border-gold focus:outline-none text-white"
                 />
                 <div className="space-y-2">
